@@ -3,6 +3,7 @@ package com.example.order.controller;
 import com.example.order.model.CreateOrderRequest;
 import com.example.order.model.OrderResponse;
 import com.example.order.service.OrderService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +20,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public OrderResponse createOrder(@RequestBody CreateOrderRequest createOrderRequest) {
+    public OrderResponse createOrder(@Valid @RequestBody CreateOrderRequest createOrderRequest) {
         return orderService.createOrder(createOrderRequest);
     }
 }
