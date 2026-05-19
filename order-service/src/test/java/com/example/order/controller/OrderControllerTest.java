@@ -1,5 +1,7 @@
 package com.example.order.controller;
 
+import com.example.order.domain.OrderStatus;
+import com.example.order.error.OrderNotFoundException;
 import com.example.order.model.CreateOrderRequest;
 import com.example.order.model.OrderResponse;
 import com.example.order.service.OrderService;
@@ -11,8 +13,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Instant;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,10 +44,11 @@ public class OrderControllerTest {
 
         OrderResponse orderResponse = new OrderResponse(
                 "order-123",
-                "CREATED",
+                OrderStatus.CREATED,
                 "customer-123",
                 "product-123",
-                3
+                3,
+                Instant.parse("2026-05-17T12:00:00Z")
         );
 
         when(orderService.createOrder(any(CreateOrderRequest.class)))
@@ -56,7 +62,8 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.status").value("CREATED"))
                 .andExpect(jsonPath("$.customerId").value("customer-123"))
                 .andExpect(jsonPath("$.productId").value("product-123"))
-                .andExpect(jsonPath("$.quantity").value(3));
+                .andExpect(jsonPath("$.quantity").value(3))
+                .andExpect((jsonPath("$.createdAt").value("2026-05-17T12:00:00Z")));
 
         verify(orderService).createOrder(createOrderRequest);
     }
@@ -81,5 +88,46 @@ public class OrderControllerTest {
         ;
 
         verifyNoInteractions(orderService);
+    }
+
+    @Test
+    void getOrderByIdShouldReturnOrder() throws Exception {
+        OrderResponse response = new OrderResponse(
+                "order-123",
+                OrderStatus.CREATED,
+                "customer-123",
+                "product-123",
+                3,
+                Instant.parse("2026-05-17T12:00:00Z")
+        );
+
+        when(orderService.getOrderById("order-123"))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/orders/order-123"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value("order-123"))
+                .andExpect(jsonPath("$.customerId").value("customer-123"))
+                .andExpect(jsonPath("$.productId").value("product-123"))
+                .andExpect(jsonPath("$.quantity").value(3))
+                .andExpect(jsonPath("$.status").value("CREATED"))
+                .andExpect(jsonPath("$.createdAt").value("2026-05-17T12:00:00Z"));
+
+        verify(orderService).getOrderById("order-123");
+    }
+
+    @Test
+    void getOrderByIdShouldReturnNotFoundWhenOrderDoesNotExist() throws Exception {
+        when(orderService.getOrderById("nonexistent-order"))
+                .thenThrow(new OrderNotFoundException("nonexistent-order"));
+
+        mockMvc.perform(get("/orders/nonexistent-order"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Order not found"))
+                .andExpect(jsonPath("$.message").value("Order not found: nonexistent-order"))
+                .andExpect(jsonPath("$.path").value("/orders/nonexistent-order"));
+
+        verify(orderService).getOrderById("nonexistent-order");
     }
 }

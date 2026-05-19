@@ -1,10 +1,8 @@
-package com.example.order.model;
-
-import com.example.order.domain.OrderStatus;
+package com.example.order.domain;
 
 import java.time.Instant;
 
-public record OrderResponse(
+public record Order(
         String orderId,
         OrderStatus status,
         String customerId,
