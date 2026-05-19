@@ -37,4 +37,20 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(OrderNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleOrderNotFoundException (
+            OrderNotFoundException exception,
+            HttpServletRequest request
+    ) {
+
+        return new ErrorResponse(
+                Instant.now(),
+                HttpStatus.NOT_FOUND.value(),
+                "Order not found",
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
 }
