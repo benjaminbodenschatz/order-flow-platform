@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -66,5 +67,40 @@ public class OrderServiceTest {
                 OrderNotFoundException.class,
                 () -> orderService.getOrderById("nonexistent-order")
         );
+    }
+
+    @Test
+    void getAllOrdersShouldReturnCreatedOrders() {
+        CreateOrderRequest firstRequest = new CreateOrderRequest(
+                "customer-123",
+                "product-456",
+                2
+        );
+
+        CreateOrderRequest secondRequest = new CreateOrderRequest(
+                "customer-456",
+                "product-789",
+                1
+        );
+
+        OrderResponse firstCreatedOrder = orderService.createOrder(firstRequest);
+        OrderResponse secondCreatedOrder = orderService.createOrder(secondRequest);
+
+        List<OrderResponse> orders = orderService.getAllOrders();
+
+        List<String> orderIds = orders.stream()
+                .map(OrderResponse::orderId)
+                .toList();
+
+        assertEquals(2, orders.size());
+        assertTrue(orderIds.contains(firstCreatedOrder.orderId()));
+        assertTrue(orderIds.contains(secondCreatedOrder.orderId()));
+    }
+
+    @Test
+    void getAllOrdersShouldReturnEmptyListWhenNoOrdersExist() {
+        List<OrderResponse> orders = orderService.getAllOrders();
+
+        assertTrue(orders.isEmpty());
     }
 }
