@@ -9,6 +9,7 @@ import com.example.order.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -40,6 +41,13 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
 
         return toOrderResponse(order);
+    }
+
+    public List<OrderResponse> getAllOrders() {
+        return orderRepository.findAll()
+                .stream()
+                .map(this::toOrderResponse)
+                .toList();
     }
 
     private OrderResponse toOrderResponse(Order order) {

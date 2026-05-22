@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -129,5 +130,47 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.path").value("/orders/nonexistent-order"));
 
         verify(orderService).getOrderById("nonexistent-order");
+    }
+
+    @Test
+    void getAllOrdersShouldReturnOrders() throws Exception {
+        OrderResponse firstResponse = new OrderResponse(
+                "order-abc",
+                OrderStatus.CREATED,
+                "customer-123",
+                "product-456",
+                2,
+                Instant.parse("2026-05-17T12:00:00Z")
+        );
+
+        OrderResponse secondResponse = new OrderResponse(
+                "order-def",
+                OrderStatus.CREATED,
+                "customer-456",
+                "product-789",
+                1,
+                Instant.parse("2026-05-17T12:05:00Z")
+        );
+
+        when(orderService.getAllOrders())
+                .thenReturn(List.of(firstResponse, secondResponse));
+
+        mockMvc.perform(get("/orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].orderId").value("order-abc"))
+                .andExpect(jsonPath("$[0].customerId").value("customer-123"))
+                .andExpect(jsonPath("$[0].productId").value("product-456"))
+                .andExpect(jsonPath("$[0].quantity").value(2))
+                .andExpect(jsonPath("$[0].status").value("CREATED"))
+                .andExpect(jsonPath("$[0].createdAt").value("2026-05-17T12:00:00Z"))
+                .andExpect(jsonPath("$[1].orderId").value("order-def"))
+                .andExpect(jsonPath("$[1].customerId").value("customer-456"))
+                .andExpect(jsonPath("$[1].productId").value("product-789"))
+                .andExpect(jsonPath("$[1].quantity").value(1))
+                .andExpect(jsonPath("$[1].status").value("CREATED"))
+                .andExpect(jsonPath("$[1].createdAt").value("2026-05-17T12:05:00Z"));
+
+        verify(orderService).getAllOrders();
     }
 }
