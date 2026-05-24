@@ -2,6 +2,7 @@ package com.example.order.service;
 
 import com.example.order.domain.Order;
 import com.example.order.domain.OrderStatus;
+import com.example.order.error.InvalidOrderStateException;
 import com.example.order.error.OrderNotFoundException;
 import com.example.order.model.CreateOrderRequest;
 import com.example.order.model.OrderResponse;
@@ -48,6 +49,28 @@ public class OrderService {
                 .stream()
                 .map(this::toOrderResponse)
                 .toList();
+    }
+
+    public OrderResponse cancelOrder(String orderId) {
+        Order existingOrder = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        if (existingOrder.status() != OrderStatus.CREATED) {
+           throw new InvalidOrderStateException(orderId, existingOrder.status(), "cancel");
+        }
+
+        Order cancelledOrder = new Order(
+                existingOrder.orderId(),
+                OrderStatus.CANCELLED,
+                existingOrder.customerId(),
+                existingOrder.productId(),
+                existingOrder.quantity(),
+                existingOrder.createdAt()
+        );
+
+        Order savedOrder = orderRepository.save(cancelledOrder);
+
+        return toOrderResponse(savedOrder);
     }
 
     private OrderResponse toOrderResponse(Order order) {
