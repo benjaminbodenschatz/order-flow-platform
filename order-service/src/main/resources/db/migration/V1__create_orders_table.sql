@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS orders (
+CREATE TABLE orders (
     order_id VARCHAR(36) PRIMARY KEY,
     status VARCHAR(20) NOT NULL,
     customer_id VARCHAR(255) NOT NULL,
