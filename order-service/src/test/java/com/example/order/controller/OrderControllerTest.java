@@ -53,6 +53,7 @@ class OrderControllerTest {
                 "customer-123",
                 "product-123",
                 3,
+                Instant.parse("2026-05-17T12:00:00Z"),
                 Instant.parse("2026-05-17T12:00:00Z")
         );
 
@@ -68,7 +69,8 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.customerId").value("customer-123"))
                 .andExpect(jsonPath("$.productId").value("product-123"))
                 .andExpect(jsonPath("$.quantity").value(3))
-                .andExpect(jsonPath("$.createdAt").value("2026-05-17T12:00:00Z"));
+                .andExpect(jsonPath("$.createdAt").value("2026-05-17T12:00:00Z"))
+                .andExpect(jsonPath("$.updatedAt").value("2026-05-17T12:00:00Z"));
 
         verify(orderService).createOrder(request);
     }
@@ -102,6 +104,7 @@ class OrderControllerTest {
                 "customer-123",
                 "product-123",
                 3,
+                Instant.parse("2026-05-17T12:00:00Z"),
                 Instant.parse("2026-05-17T12:00:00Z")
         );
 
@@ -115,7 +118,8 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.customerId").value("customer-123"))
                 .andExpect(jsonPath("$.productId").value("product-123"))
                 .andExpect(jsonPath("$.quantity").value(3))
-                .andExpect(jsonPath("$.createdAt").value("2026-05-17T12:00:00Z"));
+                .andExpect(jsonPath("$.createdAt").value("2026-05-17T12:00:00Z"))
+                .andExpect(jsonPath("$.updatedAt").value("2026-05-17T12:00:00Z"));
 
         verify(orderService).getOrderById("order-123");
     }
@@ -143,6 +147,7 @@ class OrderControllerTest {
                 "customer-123",
                 "product-456",
                 2,
+                Instant.parse("2026-05-17T12:00:00Z"),
                 Instant.parse("2026-05-17T12:00:00Z")
         );
 
@@ -152,6 +157,7 @@ class OrderControllerTest {
                 "customer-456",
                 "product-789",
                 1,
+                Instant.parse("2026-05-17T12:05:00Z"),
                 Instant.parse("2026-05-17T12:05:00Z")
         );
 
@@ -167,12 +173,14 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$[0].productId").value("product-456"))
                 .andExpect(jsonPath("$[0].quantity").value(2))
                 .andExpect(jsonPath("$[0].createdAt").value("2026-05-17T12:00:00Z"))
+                .andExpect(jsonPath("$[0].updatedAt").value("2026-05-17T12:00:00Z"))
                 .andExpect(jsonPath("$[1].orderId").value("order-def"))
                 .andExpect(jsonPath("$[1].status").value("CREATED"))
                 .andExpect(jsonPath("$[1].customerId").value("customer-456"))
                 .andExpect(jsonPath("$[1].productId").value("product-789"))
                 .andExpect(jsonPath("$[1].quantity").value(1))
-                .andExpect(jsonPath("$[1].createdAt").value("2026-05-17T12:05:00Z"));
+                .andExpect(jsonPath("$[1].createdAt").value("2026-05-17T12:05:00Z"))
+                .andExpect(jsonPath("$[1].updatedAt").value("2026-05-17T12:05:00Z"));
 
         verify(orderService).getAllOrders();
     }
@@ -197,7 +205,8 @@ class OrderControllerTest {
                 "customer-123",
                 "product-456",
                 2,
-                Instant.parse("2026-05-17T12:00:00Z")
+                Instant.parse("2026-05-17T12:00:00Z"),
+                Instant.parse("2026-05-17T12:05:00Z")
         );
 
         when(orderService.cancelOrder("order-123"))
@@ -210,7 +219,8 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.customerId").value("customer-123"))
                 .andExpect(jsonPath("$.productId").value("product-456"))
                 .andExpect(jsonPath("$.quantity").value(2))
-                .andExpect(jsonPath("$.createdAt").value("2026-05-17T12:00:00Z"));
+                .andExpect(jsonPath("$.createdAt").value("2026-05-17T12:00:00Z"))
+                .andExpect(jsonPath("$.updatedAt").value("2026-05-17T12:05:00Z"));
 
         verify(orderService).cancelOrder("order-123");
     }

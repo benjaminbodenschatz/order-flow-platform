@@ -23,13 +23,16 @@ public class OrderService {
     }
 
     public OrderResponse createOrder(CreateOrderRequest createOrderRequest) {
+        Instant now = Instant.now();
+
         Order order = new Order(
                 UUID.randomUUID().toString(),
                 OrderStatus.CREATED,
                 createOrderRequest.customerId(),
                 createOrderRequest.productId(),
                 createOrderRequest.quantity(),
-                Instant.now()
+                now,
+                now
         );
 
         Order savedOrder = orderRepository.save(order);
@@ -65,7 +68,8 @@ public class OrderService {
                 existingOrder.customerId(),
                 existingOrder.productId(),
                 existingOrder.quantity(),
-                existingOrder.createdAt()
+                existingOrder.createdAt(),
+                Instant.now()
         );
 
         Order savedOrder = orderRepository.save(cancelledOrder);
@@ -80,7 +84,8 @@ public class OrderService {
                 order.customerId(),
                 order.productId(),
                 order.quantity(),
-                order.createdAt()
+                order.createdAt(),
+                order.updatedAt()
         );
     }
 }

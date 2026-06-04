@@ -16,13 +16,16 @@ class InMemoryOrderRepositoryTest {
     void save_whenOrderIsProvided_shouldStoreOrderSoItCanBeFoundById() {
         InMemoryOrderRepository repository = new InMemoryOrderRepository();
 
+        Instant timestamp = Instant.parse("2026-05-17T12:00:00Z");
+
         Order order = new Order(
                 "order-1",
                 OrderStatus.CREATED,
                 "customer-123",
                 "product-456",
                 2,
-                Instant.parse("2026-05-17T12:00:00Z")
+                timestamp,
+                timestamp
         );
 
         Order savedOrder = repository.save(order);
@@ -52,6 +55,7 @@ class InMemoryOrderRepositoryTest {
                 "customer-456",
                 "product-789",
                 1,
+                Instant.parse("2026-05-17T12:05:00Z"),
                 Instant.parse("2026-05-17T12:05:00Z")
         );
 
@@ -61,6 +65,7 @@ class InMemoryOrderRepositoryTest {
                 "customer-123",
                 "product-456",
                 2,
+                Instant.parse("2026-05-17T12:00:00Z"),
                 Instant.parse("2026-05-17T12:00:00Z")
         );
 
@@ -84,6 +89,7 @@ class InMemoryOrderRepositoryTest {
                 "customer-456",
                 "product-789",
                 1,
+                sameCreatedAt,
                 sameCreatedAt
         );
 
@@ -93,6 +99,7 @@ class InMemoryOrderRepositoryTest {
                 "customer-123",
                 "product-456",
                 2,
+                sameCreatedAt,
                 sameCreatedAt
         );
 
@@ -109,6 +116,7 @@ class InMemoryOrderRepositoryTest {
         InMemoryOrderRepository repository = new InMemoryOrderRepository();
 
         Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant cancelledAt = Instant.parse("2026-05-17T12:05:00Z");
 
         Order createdOrder = new Order(
                 "order-1",
@@ -116,6 +124,7 @@ class InMemoryOrderRepositoryTest {
                 "customer-123",
                 "product-456",
                 2,
+                createdAt,
                 createdAt
         );
 
@@ -125,7 +134,8 @@ class InMemoryOrderRepositoryTest {
                 "customer-123",
                 "product-456",
                 2,
-                createdAt
+                createdAt,
+                cancelledAt
         );
 
         repository.save(createdOrder);
