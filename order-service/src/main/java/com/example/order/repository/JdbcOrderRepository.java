@@ -29,7 +29,8 @@ public class JdbcOrderRepository implements OrderRepository {
                     customer_id = ?,
                     product_id = ?,
                     quantity = ?,
-                    created_at = ?
+                    created_at = ?,
+                    updated_at = ?
                 WHERE order_id = ?
                 """,
                 order.status().name(),
@@ -37,6 +38,7 @@ public class JdbcOrderRepository implements OrderRepository {
                 order.productId(),
                 order.quantity(),
                 Timestamp.from(order.createdAt()),
+                Timestamp.from(order.updatedAt()),
                 order.orderId()
         );
 
@@ -49,16 +51,18 @@ public class JdbcOrderRepository implements OrderRepository {
                          customer_id,
                          product_id,
                          quantity,
-                         created_at
+                         created_at,
+                         updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
                     order.orderId(),
                     order.status().name(),
                     order.customerId(),
                     order.productId(),
                     order.quantity(),
-                    Timestamp.from(order.createdAt())
+                    Timestamp.from(order.createdAt()),
+                    Timestamp.from(order.updatedAt())
             );
         }
 
@@ -74,7 +78,8 @@ public class JdbcOrderRepository implements OrderRepository {
                       customer_id,
                       product_id,
                       quantity,
-                      created_at
+                      created_at,
+                      updated_at
                 FROM orders
                 WHERE order_id = ?
                 """,
@@ -94,7 +99,8 @@ public class JdbcOrderRepository implements OrderRepository {
                       customer_id,
                       product_id,
                       quantity,
-                      created_at
+                      created_at,
+                      updated_at
                 FROM orders
                 ORDER BY created_at, order_id
                 """,
@@ -109,7 +115,8 @@ public class JdbcOrderRepository implements OrderRepository {
                 resultSet.getString("customer_id"),
                 resultSet.getString("product_id"),
                 resultSet.getInt("quantity"),
-                resultSet.getTimestamp("created_at").toInstant()
+                resultSet.getTimestamp("created_at").toInstant(),
+                resultSet.getTimestamp("updated_at").toInstant()
         );
     }
 

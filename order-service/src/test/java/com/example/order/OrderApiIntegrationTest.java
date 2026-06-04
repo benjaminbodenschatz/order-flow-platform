@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "spring.sql.init.mode=always",
+        "spring.sql.init.mode=never",
         "spring.h2.console.enabled=false"
 })
 class OrderApiIntegrationTest {
@@ -67,6 +67,7 @@ class OrderApiIntegrationTest {
                 .andExpect(jsonPath("$.productId").value("product-456"))
                 .andExpect(jsonPath("$.quantity").value(2))
                 .andExpect(jsonPath("$.createdAt", notNullValue()))
+                .andExpect(jsonPath("$.updatedAt", notNullValue()))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -74,29 +75,48 @@ class OrderApiIntegrationTest {
         OrderResponse createdOrder = objectMapper.readValue(createResponseJson, OrderResponse.class);
         String orderId = createdOrder.orderId();
 
+        assertThat(createdOrder.updatedAt()).isEqualTo(createdOrder.createdAt());
+
         mockMvc.perform(get("/orders/{orderId}", orderId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value(orderId))
                 .andExpect(jsonPath("$.status").value(OrderStatus.CREATED.name()))
                 .andExpect(jsonPath("$.customerId").value("customer-123"))
                 .andExpect(jsonPath("$.productId").value("product-456"))
-                .andExpect(jsonPath("$.quantity").value(2));
+                .andExpect(jsonPath("$.quantity").value(2))
+                .andExpect(jsonPath("$.createdAt", notNullValue()))
+                .andExpect(jsonPath("$.updatedAt", notNullValue()));
 
         mockMvc.perform(get("/orders"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].orderId").value(orderId))
-                .andExpect(jsonPath("$[0].status").value(OrderStatus.CREATED.name()));
+                .andExpect(jsonPath("$[0].status").value(OrderStatus.CREATED.name()))
+                .andExpect(jsonPath("$[0].createdAt", notNullValue()))
+                .andExpect(jsonPath("$[0].updatedAt", notNullValue()));
 
-        mockMvc.perform(patch("/orders/{orderId}/cancel", orderId))
+        String cancelResponseJson = mockMvc.perform(patch("/orders/{orderId}/cancel", orderId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value(orderId))
-                .andExpect(jsonPath("$.status").value(OrderStatus.CANCELLED.name()));
+                .andExpect(jsonPath("$.status").value(OrderStatus.CANCELLED.name()))
+                .andExpect(jsonPath("$.createdAt", notNullValue()))
+                .andExpect(jsonPath("$.updatedAt", notNullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        OrderResponse cancelledOrder = objectMapper.readValue(cancelResponseJson, OrderResponse.class);
+
+        assertThat(cancelledOrder.createdAt()).isNotNull();
+        assertThat(cancelledOrder.updatedAt()).isNotNull();
+        assertThat(cancelledOrder.updatedAt()).isAfterOrEqualTo(cancelledOrder.createdAt());
 
         mockMvc.perform(get("/orders/{orderId}", orderId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value(orderId))
-                .andExpect(jsonPath("$.status").value(OrderStatus.CANCELLED.name()));
+                .andExpect(jsonPath("$.status").value(OrderStatus.CANCELLED.name()))
+                .andExpect(jsonPath("$.createdAt", notNullValue()))
+                .andExpect(jsonPath("$.updatedAt", notNullValue()));
 
         Integer cancelledRowCount = jdbcTemplate.queryForObject(
                 """
@@ -104,6 +124,8 @@ class OrderApiIntegrationTest {
                 FROM orders
                 WHERE order_id = ?
                   AND status = ?
+                  AND created_at IS NOT NULL
+                  AND updated_at IS NOT NULL
                 """,
                 Integer.class,
                 orderId,

@@ -10,6 +10,7 @@ public record OrderResponse(
         String customerId,
         String productId,
         int quantity,
-        Instant createdAt
+        Instant createdAt,
+        Instant updatedAt
 ) {
 }

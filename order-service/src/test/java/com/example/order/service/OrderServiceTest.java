@@ -57,6 +57,8 @@ class OrderServiceTest {
         assertThat(response.productId()).isEqualTo("product-456");
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.createdAt()).isNotNull();
+        assertThat(response.updatedAt()).isNotNull();
+        assertThat(response.updatedAt()).isEqualTo(response.createdAt());
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(orderCaptor.capture());
@@ -69,11 +71,13 @@ class OrderServiceTest {
         assertThat(savedOrder.productId()).isEqualTo("product-456");
         assertThat(savedOrder.quantity()).isEqualTo(2);
         assertThat(savedOrder.createdAt()).isEqualTo(response.createdAt());
+        assertThat(savedOrder.updatedAt()).isEqualTo(response.updatedAt());
     }
 
     @Test
     void getOrderById_whenOrderExists_shouldReturnOrder() {
         Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant updatedAt = Instant.parse("2026-05-17T12:05:00Z");
 
         Order order = new Order(
                 "order-123",
@@ -81,7 +85,8 @@ class OrderServiceTest {
                 "customer-123",
                 "product-456",
                 2,
-                createdAt
+                createdAt,
+                updatedAt
         );
 
         when(orderRepository.findById("order-123"))
@@ -95,6 +100,7 @@ class OrderServiceTest {
         assertThat(response.productId()).isEqualTo("product-456");
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.createdAt()).isEqualTo(createdAt);
+        assertThat(response.updatedAt()).isEqualTo(updatedAt);
 
         verify(orderRepository).findById("order-123");
     }
@@ -114,7 +120,9 @@ class OrderServiceTest {
     @Test
     void getAllOrders_whenOrdersExist_shouldReturnAllOrders() {
         Instant firstCreatedAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant firstUpdatedAt = Instant.parse("2026-05-17T12:00:00Z");
         Instant secondCreatedAt = Instant.parse("2026-05-17T12:01:00Z");
+        Instant secondUpdatedAt = Instant.parse("2026-05-17T12:01:00Z");
 
         Order firstOrder = new Order(
                 "order-123",
@@ -122,7 +130,8 @@ class OrderServiceTest {
                 "customer-123",
                 "product-456",
                 2,
-                firstCreatedAt
+                firstCreatedAt,
+                firstUpdatedAt
         );
 
         Order secondOrder = new Order(
@@ -131,7 +140,8 @@ class OrderServiceTest {
                 "customer-456",
                 "product-789",
                 1,
-                secondCreatedAt
+                secondCreatedAt,
+                secondUpdatedAt
         );
 
         when(orderRepository.findAll())
@@ -147,6 +157,7 @@ class OrderServiceTest {
         assertThat(responses.get(0).productId()).isEqualTo("product-456");
         assertThat(responses.get(0).quantity()).isEqualTo(2);
         assertThat(responses.get(0).createdAt()).isEqualTo(firstCreatedAt);
+        assertThat(responses.get(0).updatedAt()).isEqualTo(firstUpdatedAt);
 
         assertThat(responses.get(1).orderId()).isEqualTo("order-456");
         assertThat(responses.get(1).status()).isEqualTo(OrderStatus.CREATED);
@@ -154,6 +165,7 @@ class OrderServiceTest {
         assertThat(responses.get(1).productId()).isEqualTo("product-789");
         assertThat(responses.get(1).quantity()).isEqualTo(1);
         assertThat(responses.get(1).createdAt()).isEqualTo(secondCreatedAt);
+        assertThat(responses.get(1).updatedAt()).isEqualTo(secondUpdatedAt);
 
         verify(orderRepository).findAll();
     }
@@ -173,6 +185,7 @@ class OrderServiceTest {
     @Test
     void cancelOrder_whenOrderIsCreated_shouldUpdateStatusToCancelled() {
         Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant originalUpdatedAt = Instant.parse("2026-05-17T12:00:00Z");
 
         Order existingOrder = new Order(
                 "order-123",
@@ -180,25 +193,21 @@ class OrderServiceTest {
                 "customer-123",
                 "product-456",
                 2,
-                createdAt
-        );
-
-        Order cancelledOrder = new Order(
-                "order-123",
-                OrderStatus.CANCELLED,
-                "customer-123",
-                "product-456",
-                2,
-                createdAt
+                createdAt,
+                originalUpdatedAt
         );
 
         when(orderRepository.findById("order-123"))
                 .thenReturn(Optional.of(existingOrder));
 
-        when(orderRepository.save(cancelledOrder))
-                .thenReturn(cancelledOrder);
+        when(orderRepository.save(any(Order.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Instant beforeCancel = Instant.now();
 
         OrderResponse response = orderService.cancelOrder("order-123");
+
+        Instant afterCancel = Instant.now();
 
         assertThat(response.orderId()).isEqualTo("order-123");
         assertThat(response.status()).isEqualTo(OrderStatus.CANCELLED);
@@ -206,9 +215,23 @@ class OrderServiceTest {
         assertThat(response.productId()).isEqualTo("product-456");
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.createdAt()).isEqualTo(createdAt);
+        assertThat(response.updatedAt()).isAfterOrEqualTo(beforeCancel);
+        assertThat(response.updatedAt()).isBeforeOrEqualTo(afterCancel);
+
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
 
         verify(orderRepository).findById("order-123");
-        verify(orderRepository).save(cancelledOrder);
+        verify(orderRepository).save(orderCaptor.capture());
+
+        Order savedOrder = orderCaptor.getValue();
+
+        assertThat(savedOrder.orderId()).isEqualTo("order-123");
+        assertThat(savedOrder.status()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(savedOrder.customerId()).isEqualTo("customer-123");
+        assertThat(savedOrder.productId()).isEqualTo("product-456");
+        assertThat(savedOrder.quantity()).isEqualTo(2);
+        assertThat(savedOrder.createdAt()).isEqualTo(createdAt);
+        assertThat(savedOrder.updatedAt()).isEqualTo(response.updatedAt());
     }
 
     @Test
@@ -227,6 +250,7 @@ class OrderServiceTest {
     @Test
     void cancelOrder_whenOrderIsAlreadyCancelled_shouldThrowInvalidOrderStateException() {
         Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant updatedAt = Instant.parse("2026-05-17T12:05:00Z");
 
         Order existingOrder = new Order(
                 "order-123",
@@ -234,7 +258,8 @@ class OrderServiceTest {
                 "customer-123",
                 "product-456",
                 2,
-                createdAt
+                createdAt,
+                updatedAt
         );
 
         when(orderRepository.findById("order-123"))

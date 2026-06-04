@@ -38,7 +38,8 @@ class JdbcOrderRepositoryTest {
                     customer_id VARCHAR(255) NOT NULL,
                     product_id VARCHAR(255) NOT NULL,
                     quantity INTEGER NOT NULL,
-                    created_at TIMESTAMP NOT NULL
+                    created_at TIMESTAMP NOT NULL,
+                    updated_at TIMESTAMP NOT NULL
                 )
                 """
         );
@@ -48,13 +49,16 @@ class JdbcOrderRepositoryTest {
 
     @Test
     void save_whenOrderDoesNotExist_shouldInsertOrder() {
+        Instant timestamp = Instant.parse("2026-05-17T12:00:00Z");
+
         Order order = new Order(
                 "order-123",
                 OrderStatus.CREATED,
                 "customer-123",
                 "product-456",
                 2,
-                Instant.parse("2026-05-17T12:00:00Z")
+                timestamp,
+                timestamp
         );
 
         repository.save(order);
@@ -80,6 +84,7 @@ class JdbcOrderRepositoryTest {
                 "customer-123",
                 "product-456",
                 2,
+                Instant.parse("2026-05-17T12:05:00Z"),
                 Instant.parse("2026-05-17T12:05:00Z")
         );
 
@@ -89,6 +94,7 @@ class JdbcOrderRepositoryTest {
                 "customer-123",
                 "product-456",
                 2,
+                Instant.parse("2026-05-17T12:00:00Z"),
                 Instant.parse("2026-05-17T12:00:00Z")
         );
 
@@ -98,6 +104,7 @@ class JdbcOrderRepositoryTest {
                 "customer-123",
                 "product-456",
                 2,
+                Instant.parse("2026-05-17T12:00:00Z"),
                 Instant.parse("2026-05-17T12:00:00Z")
         );
 
@@ -112,13 +119,17 @@ class JdbcOrderRepositoryTest {
 
     @Test
     void save_whenOrderWithSameIdAlreadyExists_shouldReplaceExistingOrder() {
+        Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant cancelledAt = Instant.parse("2026-05-17T12:05:00Z");
+
         Order originalOrder = new Order(
                 "order-123",
                 OrderStatus.CREATED,
                 "customer-123",
                 "product-456",
                 2,
-                Instant.parse("2026-05-17T12:00:00Z")
+                createdAt,
+                createdAt
         );
 
         Order cancelledOrder = new Order(
@@ -127,7 +138,8 @@ class JdbcOrderRepositoryTest {
                 "customer-123",
                 "product-456",
                 2,
-                Instant.parse("2026-05-17T12:00:00Z")
+                createdAt,
+                cancelledAt
         );
 
         repository.save(originalOrder);
