@@ -2,6 +2,7 @@ package com.example.order.controller;
 
 import com.example.order.domain.OrderStatus;
 import com.example.order.error.InvalidOrderStateException;
+import com.example.order.error.InvalidOrderStatusException;
 import com.example.order.error.OrderNotFoundException;
 import com.example.order.model.CreateOrderRequest;
 import com.example.order.model.OrderResponse;
@@ -161,7 +162,7 @@ class OrderControllerTest {
                 Instant.parse("2026-05-17T12:05:00Z")
         );
 
-        when(orderService.getAllOrders())
+        when(orderService.getAllOrders(null))
                 .thenReturn(List.of(firstResponse, secondResponse));
 
         mockMvc.perform(get("/orders"))
@@ -182,19 +183,19 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$[1].createdAt").value("2026-05-17T12:05:00Z"))
                 .andExpect(jsonPath("$[1].updatedAt").value("2026-05-17T12:05:00Z"));
 
-        verify(orderService).getAllOrders();
+        verify(orderService).getAllOrders(null);
     }
 
     @Test
     void getAllOrders_whenNoOrdersExist_shouldReturnEmptyList() throws Exception {
-        when(orderService.getAllOrders())
+        when(orderService.getAllOrders(null))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/orders"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
 
-        verify(orderService).getAllOrders();
+        verify(orderService).getAllOrders(null);
     }
 
     @Test
@@ -253,5 +254,49 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.path").value("/orders/order-123/cancel"));
 
         verify(orderService).cancelOrder("order-123");
+    }
+
+    @Test
+    void getAllOrders_whenStatusFilterIsProvided_shouldReturnMatchingOrders() throws Exception {
+        Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+
+        OrderResponse response = new OrderResponse(
+                "order-123",
+                OrderStatus.CREATED,
+                "customer-123",
+                "product-456",
+                2,
+                createdAt,
+                createdAt
+        );
+
+        when(orderService.getAllOrders("CREATED"))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(get("/orders")
+                        .param("status", "CREATED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].orderId").value("order-123"))
+                .andExpect(jsonPath("$[0].status").value("CREATED"))
+                .andExpect(jsonPath("$[0].createdAt").exists())
+                .andExpect(jsonPath("$[0].updatedAt").exists());
+
+        verify(orderService).getAllOrders("CREATED");
+    }
+
+    @Test
+    void getAllOrders_whenStatusFilterIsInvalid_shouldReturnBadRequest() throws Exception {
+        when(orderService.getAllOrders("INVALID"))
+                .thenThrow(new InvalidOrderStatusException("INVALID"));
+
+        mockMvc.perform(get("/orders")
+                        .param("status", "INVALID"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Invalid order status: INVALID. Allowed values: CREATED, CANCELLED"))
+                .andExpect(jsonPath("$.path").value("/orders"));
+
+        verify(orderService).getAllOrders("INVALID");
     }
 }

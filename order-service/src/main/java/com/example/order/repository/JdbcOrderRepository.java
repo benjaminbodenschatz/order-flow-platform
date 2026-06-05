@@ -108,6 +108,26 @@ public class JdbcOrderRepository implements OrderRepository {
         );
     }
 
+    @Override
+    public List<Order> findAllByStatus(OrderStatus status) {
+        return jdbcTemplate.query(
+                """
+                SELECT order_id,
+                      status,
+                      customer_id,
+                      product_id,
+                      quantity,
+                      created_at,
+                      updated_at
+                FROM orders
+                WHERE status = ?
+                ORDER BY created_at, order_id
+                """,
+                this::mapRowToOrder,
+                status.name()
+        );
+    }
+
     private Order mapRowToOrder(ResultSet resultSet, int rowNumber) throws SQLException {
         return new Order(
                 resultSet.getString("order_id"),

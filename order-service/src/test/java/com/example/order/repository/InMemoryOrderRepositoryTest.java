@@ -148,4 +148,51 @@ class InMemoryOrderRepositoryTest {
         assertEquals(Optional.of(cancelledOrder), foundOrder);
         assertEquals(List.of(cancelledOrder), orders);
     }
+
+    @Test
+    void findAllByStatus_whenMatchingOrdersExist_shouldReturnOnlyMatchingOrdersSorted() {
+        InMemoryOrderRepository repository = new InMemoryOrderRepository();
+
+        Instant firstCreatedAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant secondCreatedAt = Instant.parse("2026-05-17T12:05:00Z");
+        Instant thirdCreatedAt = Instant.parse("2026-05-17T12:10:00Z");
+
+        Order laterCreatedOrder = new Order(
+                "order-3",
+                OrderStatus.CREATED,
+                "customer-333",
+                "product-333",
+                3,
+                thirdCreatedAt,
+                thirdCreatedAt
+        );
+
+        Order cancelledOrder = new Order(
+                "order-2",
+                OrderStatus.CANCELLED,
+                "customer-222",
+                "product-222",
+                1,
+                secondCreatedAt,
+                secondCreatedAt
+        );
+
+        Order earlierCreatedOrder = new Order(
+                "order-1",
+                OrderStatus.CREATED,
+                "customer-111",
+                "product-111",
+                2,
+                firstCreatedAt,
+                firstCreatedAt
+        );
+
+        repository.save(laterCreatedOrder);
+        repository.save(cancelledOrder);
+        repository.save(earlierCreatedOrder);
+
+        List<Order> orders = repository.findAllByStatus(OrderStatus.CREATED);
+
+        assertEquals(List.of(earlierCreatedOrder, laterCreatedOrder), orders);
+    }
 }

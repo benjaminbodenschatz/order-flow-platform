@@ -31,8 +31,8 @@ public class OrderController {
     }
 
     @GetMapping
-    public List<OrderResponse> getAllOrders() {
-        return orderService.getAllOrders();
+    public List<OrderResponse> getAllOrders(@RequestParam(required = false) String status) {
+        return orderService.getAllOrders(status);
     }
 
     @PatchMapping("/{orderId}/cancel")

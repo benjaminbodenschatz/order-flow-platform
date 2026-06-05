@@ -3,6 +3,7 @@ package com.example.order.service;
 import com.example.order.domain.Order;
 import com.example.order.domain.OrderStatus;
 import com.example.order.error.InvalidOrderStateException;
+import com.example.order.error.InvalidOrderStatusException;
 import com.example.order.error.OrderNotFoundException;
 import com.example.order.model.CreateOrderRequest;
 import com.example.order.model.OrderResponse;
@@ -47,8 +48,17 @@ public class OrderService {
         return toOrderResponse(order);
     }
 
-    public List<OrderResponse> getAllOrders() {
-        return orderRepository.findAll()
+    public List<OrderResponse> getAllOrders(String status) {
+        if (status == null || status.isBlank()) {
+            return orderRepository.findAll()
+                    .stream()
+                    .map(this::toOrderResponse)
+                    .toList();
+        }
+
+        OrderStatus orderStatus = parseOrderStatus(status);
+
+        return orderRepository.findAllByStatus(orderStatus)
                 .stream()
                 .map(this::toOrderResponse)
                 .toList();
@@ -75,6 +85,14 @@ public class OrderService {
         Order savedOrder = orderRepository.save(cancelledOrder);
 
         return toOrderResponse(savedOrder);
+    }
+
+    private OrderStatus parseOrderStatus(String status) {
+        try {
+            return OrderStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new InvalidOrderStatusException(status);
+        }
     }
 
     private OrderResponse toOrderResponse(Order order) {
