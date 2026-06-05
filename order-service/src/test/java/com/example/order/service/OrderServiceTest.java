@@ -3,6 +3,7 @@ package com.example.order.service;
 import com.example.order.domain.Order;
 import com.example.order.domain.OrderStatus;
 import com.example.order.error.InvalidOrderStateException;
+import com.example.order.error.InvalidOrderStatusException;
 import com.example.order.error.OrderNotFoundException;
 import com.example.order.model.CreateOrderRequest;
 import com.example.order.model.OrderResponse;
@@ -20,10 +21,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -147,7 +148,7 @@ class OrderServiceTest {
         when(orderRepository.findAll())
                 .thenReturn(List.of(firstOrder, secondOrder));
 
-        List<OrderResponse> responses = orderService.getAllOrders();
+        List<OrderResponse> responses = orderService.getAllOrders(null);
 
         assertThat(responses).hasSize(2);
 
@@ -175,7 +176,7 @@ class OrderServiceTest {
         when(orderRepository.findAll())
                 .thenReturn(List.of());
 
-        List<OrderResponse> responses = orderService.getAllOrders();
+        List<OrderResponse> responses = orderService.getAllOrders(null);
 
         assertThat(responses).isEmpty();
 
@@ -271,5 +272,80 @@ class OrderServiceTest {
 
         verify(orderRepository).findById("order-123");
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void getAllOrders_whenStatusFilterIsProvided_shouldReturnMatchingOrders() {
+        Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant cancelledAt = Instant.parse("2026-05-17T12:05:00Z");
+
+        Order createdOrder = new Order(
+                "order-123",
+                OrderStatus.CREATED,
+                "customer-123",
+                "product-456",
+                2,
+                createdAt,
+                createdAt
+        );
+
+        Order cancelledOrder = new Order(
+                "order-456",
+                OrderStatus.CANCELLED,
+                "customer-789",
+                "product-999",
+                1,
+                createdAt,
+                cancelledAt
+        );
+
+        when(orderRepository.findAllByStatus(OrderStatus.CREATED))
+                .thenReturn(List.of(createdOrder));
+
+        List<OrderResponse> responses = orderService.getAllOrders("CREATED");
+
+        assertEquals(1, responses.size());
+        assertEquals("order-123", responses.get(0).orderId());
+        assertEquals(OrderStatus.CREATED, responses.get(0).status());
+
+        verify(orderRepository).findAllByStatus(OrderStatus.CREATED);
+        verify(orderRepository, never()).findAll();
+    }
+
+    @Test
+    void getAllOrders_whenStatusFilterUsesLowercase_shouldReturnMatchingOrders() {
+        Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+
+        Order createdOrder = new Order(
+                "order-123",
+                OrderStatus.CREATED,
+                "customer-123",
+                "product-456",
+                2,
+                createdAt,
+                createdAt
+        );
+
+        when(orderRepository.findAllByStatus(OrderStatus.CREATED))
+                .thenReturn(List.of(createdOrder));
+
+        List<OrderResponse> responses = orderService.getAllOrders("created");
+
+        assertEquals(1, responses.size());
+        assertEquals("order-123", responses.get(0).orderId());
+        assertEquals(OrderStatus.CREATED, responses.get(0).status());
+
+        verify(orderRepository).findAllByStatus(OrderStatus.CREATED);
+        verify(orderRepository, never()).findAll();
+    }
+
+    @Test
+    void getAllOrders_whenStatusFilterIsInvalid_shouldThrowInvalidOrderStatusException() {
+        assertThrows(
+                InvalidOrderStatusException.class,
+                () -> orderService.getAllOrders("INVALID")
+        );
+
+        verifyNoInteractions(orderRepository);
     }
 }

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
@@ -154,5 +155,72 @@ class OrderApiIntegrationTest {
         );
 
         assertThat(rowCount).isZero();
+    }
+
+    @Test
+    void getAllOrders_whenStatusFilterIsProvided_shouldReturnOnlyMatchingOrders() throws Exception {
+        CreateOrderRequest firstRequest = new CreateOrderRequest(
+                "customer-created",
+                "product-created",
+                2
+        );
+
+        CreateOrderRequest secondRequest = new CreateOrderRequest(
+                "customer-cancelled",
+                "product-cancelled",
+                1
+        );
+
+        String firstCreateResponseJson = mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(firstRequest)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String secondCreateResponseJson = mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(secondRequest)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        OrderResponse createdOrder = objectMapper.readValue(firstCreateResponseJson, OrderResponse.class);
+        OrderResponse orderToCancel = objectMapper.readValue(secondCreateResponseJson, OrderResponse.class);
+
+        mockMvc.perform(patch("/orders/{orderId}/cancel", orderToCancel.orderId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(OrderStatus.CANCELLED.name()));
+
+        mockMvc.perform(get("/orders")
+                        .param("status", OrderStatus.CREATED.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].orderId").value(createdOrder.orderId()))
+                .andExpect(jsonPath("$[0].status").value(OrderStatus.CREATED.name()))
+                .andExpect(jsonPath("$[0].createdAt", notNullValue()))
+                .andExpect(jsonPath("$[0].updatedAt", notNullValue()));
+
+        mockMvc.perform(get("/orders")
+                        .param("status", OrderStatus.CANCELLED.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].orderId").value(orderToCancel.orderId()))
+                .andExpect(jsonPath("$[0].status").value(OrderStatus.CANCELLED.name()))
+                .andExpect(jsonPath("$[0].createdAt", notNullValue()))
+                .andExpect(jsonPath("$[0].updatedAt", notNullValue()));
+    }
+
+    @Test
+    void getAllOrders_whenStatusFilterIsInvalid_shouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/orders")
+                        .param("status", "INVALID"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
+                .andExpect(jsonPath("$.message").value("Invalid order status: INVALID. Allowed values: CREATED, CANCELLED"))
+                .andExpect(jsonPath("$.path").value("/orders"));
     }
 }

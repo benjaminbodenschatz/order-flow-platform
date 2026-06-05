@@ -1,6 +1,7 @@
 package com.example.order.repository;
 
 import com.example.order.domain.Order;
+import com.example.order.domain.OrderStatus;
 
 import java.util.Comparator;
 import java.util.List;
@@ -27,6 +28,15 @@ public class InMemoryOrderRepository implements OrderRepository {
     public List<Order> findAll() {
         return orders.values()
                 .stream()
+                .sorted(Comparator.comparing(Order::createdAt).thenComparing(Order::orderId))
+                .toList();
+    }
+
+    @Override
+    public List<Order> findAllByStatus(OrderStatus status) {
+        return orders.values()
+                .stream()
+                .filter(order -> order.status() == status)
                 .sorted(Comparator.comparing(Order::createdAt).thenComparing(Order::orderId))
                 .toList();
     }

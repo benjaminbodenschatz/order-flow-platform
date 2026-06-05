@@ -150,4 +150,49 @@ class JdbcOrderRepositoryTest {
         assertTrue(result.isPresent());
         assertEquals(cancelledOrder, result.get());
     }
+
+    @Test
+    void findAllByStatus_whenMatchingOrdersExist_shouldReturnOnlyMatchingOrdersSorted() {
+        Instant firstCreatedAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant secondCreatedAt = Instant.parse("2026-05-17T12:05:00Z");
+        Instant thirdCreatedAt = Instant.parse("2026-05-17T12:10:00Z");
+
+        Order laterCreatedOrder = new Order(
+                "order-003",
+                OrderStatus.CREATED,
+                "customer-333",
+                "product-333",
+                3,
+                thirdCreatedAt,
+                thirdCreatedAt
+        );
+
+        Order cancelledOrder = new Order(
+                "order-002",
+                OrderStatus.CANCELLED,
+                "customer-222",
+                "product-222",
+                1,
+                secondCreatedAt,
+                secondCreatedAt
+        );
+
+        Order earlierCreatedOrder = new Order(
+                "order-001",
+                OrderStatus.CREATED,
+                "customer-111",
+                "product-111",
+                2,
+                firstCreatedAt,
+                firstCreatedAt
+        );
+
+        repository.save(laterCreatedOrder);
+        repository.save(cancelledOrder);
+        repository.save(earlierCreatedOrder);
+
+        List<Order> result = repository.findAllByStatus(OrderStatus.CREATED);
+
+        assertEquals(List.of(earlierCreatedOrder, laterCreatedOrder), result);
+    }
 }
