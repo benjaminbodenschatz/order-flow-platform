@@ -15,4 +15,12 @@ public interface OrderRepository {
     List<Order> findAll();
 
     List<Order> findAllByStatus(OrderStatus status);
+
+    List<Order> findAll(int limit, int offset);
+
+    List<Order> findAllByStatus(OrderStatus status, int limit, int offset);
+
+    long countAll();
+
+    long countByStatus(OrderStatus status);
 }

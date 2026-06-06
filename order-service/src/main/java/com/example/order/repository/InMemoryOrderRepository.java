@@ -40,4 +40,35 @@ public class InMemoryOrderRepository implements OrderRepository {
                 .sorted(Comparator.comparing(Order::createdAt).thenComparing(Order::orderId))
                 .toList();
     }
+
+    @Override
+    public List<Order> findAll(int limit, int offset) {
+        return findAll()
+                .stream()
+                .skip(offset)
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public List<Order> findAllByStatus(OrderStatus status, int limit, int offset) {
+        return findAllByStatus(status)
+                .stream()
+                .skip(offset)
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public long countAll() {
+        return orders.size();
+    }
+
+    @Override
+    public long countByStatus(OrderStatus status) {
+        return orders.values()
+                .stream()
+                .filter(order -> order.status() == status)
+                .count();
+    }
 }

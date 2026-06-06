@@ -90,11 +90,15 @@ class OrderApiIntegrationTest {
 
         mockMvc.perform(get("/orders"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].orderId").value(orderId))
-                .andExpect(jsonPath("$[0].status").value(OrderStatus.CREATED.name()))
-                .andExpect(jsonPath("$[0].createdAt", notNullValue()))
-                .andExpect(jsonPath("$[0].updatedAt", notNullValue()));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].orderId").value(orderId))
+                .andExpect(jsonPath("$.content[0].status").value(OrderStatus.CREATED.name()))
+                .andExpect(jsonPath("$.content[0].createdAt", notNullValue()))
+                .andExpect(jsonPath("$.content[0].updatedAt", notNullValue()))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1));
 
         String cancelResponseJson = mockMvc.perform(patch("/orders/{orderId}/cancel", orderId))
                 .andExpect(status().isOk())
@@ -197,20 +201,107 @@ class OrderApiIntegrationTest {
         mockMvc.perform(get("/orders")
                         .param("status", OrderStatus.CREATED.name()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].orderId").value(createdOrder.orderId()))
-                .andExpect(jsonPath("$[0].status").value(OrderStatus.CREATED.name()))
-                .andExpect(jsonPath("$[0].createdAt", notNullValue()))
-                .andExpect(jsonPath("$[0].updatedAt", notNullValue()));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].orderId").value(createdOrder.orderId()))
+                .andExpect(jsonPath("$.content[0].status").value(OrderStatus.CREATED.name()))
+                .andExpect(jsonPath("$.content[0].createdAt", notNullValue()))
+                .andExpect(jsonPath("$.content[0].updatedAt", notNullValue()))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1));
 
         mockMvc.perform(get("/orders")
                         .param("status", OrderStatus.CANCELLED.name()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].orderId").value(orderToCancel.orderId()))
-                .andExpect(jsonPath("$[0].status").value(OrderStatus.CANCELLED.name()))
-                .andExpect(jsonPath("$[0].createdAt", notNullValue()))
-                .andExpect(jsonPath("$[0].updatedAt", notNullValue()));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].orderId").value(orderToCancel.orderId()))
+                .andExpect(jsonPath("$.content[0].status").value(OrderStatus.CANCELLED.name()))
+                .andExpect(jsonPath("$.content[0].createdAt", notNullValue()))
+                .andExpect(jsonPath("$.content[0].updatedAt", notNullValue()))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1));
+    }
+
+    @Test
+    void getAllOrders_whenPaginationParametersAreProvided_shouldReturnRequestedPage() throws Exception {
+        CreateOrderRequest firstRequest = new CreateOrderRequest(
+                "customer-111",
+                "product-111",
+                1
+        );
+
+        CreateOrderRequest secondRequest = new CreateOrderRequest(
+                "customer-222",
+                "product-222",
+                2
+        );
+
+        CreateOrderRequest thirdRequest = new CreateOrderRequest(
+                "customer-333",
+                "product-333",
+                3
+        );
+
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(firstRequest)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(secondRequest)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(thirdRequest)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/orders")
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+    }
+
+    @Test
+    void getAllOrders_whenPageIsNegative_shouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/orders")
+                        .param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
+                .andExpect(jsonPath("$.message").value("Invalid pagination parameter: page must be at least 0"))
+                .andExpect(jsonPath("$.path").value("/orders"));
+    }
+
+    @Test
+    void getAllOrders_whenSizeIsZero_shouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/orders")
+                        .param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
+                .andExpect(jsonPath("$.message").value("Invalid pagination parameter: size must be between 1 and 100"))
+                .andExpect(jsonPath("$.path").value("/orders"));
+    }
+
+    @Test
+    void getAllOrders_whenSizeIsTooLarge_shouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/orders")
+                        .param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
+                .andExpect(jsonPath("$.message").value("Invalid pagination parameter: size must be between 1 and 100"))
+                .andExpect(jsonPath("$.path").value("/orders"));
     }
 
     @Test

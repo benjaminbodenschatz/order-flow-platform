@@ -2,6 +2,7 @@ package com.example.order.controller;
 
 import com.example.order.model.CreateOrderRequest;
 import com.example.order.model.OrderResponse;
+import com.example.order.model.PageResponse;
 import com.example.order.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -31,8 +32,12 @@ public class OrderController {
     }
 
     @GetMapping
-    public List<OrderResponse> getAllOrders(@RequestParam(required = false) String status) {
-        return orderService.getAllOrders(status);
+    public PageResponse<OrderResponse> getAllOrders(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return orderService.getOrdersPage(status, page, size);
     }
 
     @PatchMapping("/{orderId}/cancel")
