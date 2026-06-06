@@ -4,9 +4,11 @@ import com.example.order.domain.Order;
 import com.example.order.domain.OrderStatus;
 import com.example.order.error.InvalidOrderStateException;
 import com.example.order.error.InvalidOrderStatusException;
+import com.example.order.error.InvalidPaginationException;
 import com.example.order.error.OrderNotFoundException;
 import com.example.order.model.CreateOrderRequest;
 import com.example.order.model.OrderResponse;
+import com.example.order.model.PageResponse;
 import com.example.order.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,8 @@ import java.util.UUID;
 
 @Service
 public class OrderService {
+
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final OrderRepository orderRepository;
 
@@ -64,6 +68,38 @@ public class OrderService {
                 .toList();
     }
 
+    public PageResponse<OrderResponse> getOrdersPage(String status, int page, int size) {
+        validatePagination(page, size);
+
+        int offset = page * size;
+
+        List<Order> orders;
+        long totalElements;
+
+        if (status == null || status.isBlank()) {
+            orders = orderRepository.findAll(size, offset);
+            totalElements = orderRepository.countAll();
+        } else {
+            OrderStatus orderStatus = parseOrderStatus(status);
+            orders = orderRepository.findAllByStatus(orderStatus, size, offset);
+            totalElements = orderRepository.countByStatus(orderStatus);
+        }
+
+        List<OrderResponse> content = orders.stream()
+                .map(this::toOrderResponse)
+                .toList();
+
+        int totalPages = calculateTotalPages(totalElements, size);
+
+        return new PageResponse<>(
+                content,
+                page,
+                size,
+                totalElements,
+                totalPages
+        );
+    }
+
     public OrderResponse cancelOrder(String orderId) {
         Order existingOrder = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
@@ -85,6 +121,22 @@ public class OrderService {
         Order savedOrder = orderRepository.save(cancelledOrder);
 
         return toOrderResponse(savedOrder);
+    }
+
+    private void validatePagination(int page, int size) {
+        if (page < 0) {
+            throw new InvalidPaginationException("Invalid pagination parameter: page must be at least 0");
+        }
+
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new InvalidPaginationException(
+                    "Invalid pagination parameter: size must be between 1 and " + MAX_PAGE_SIZE
+            );
+        }
+    }
+
+    private int calculateTotalPages(long totalElements, int size) {
+        return (int) Math.ceil((double) totalElements / size);
     }
 
     private OrderStatus parseOrderStatus(String status) {

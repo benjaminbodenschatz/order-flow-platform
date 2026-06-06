@@ -195,4 +195,84 @@ class InMemoryOrderRepositoryTest {
 
         assertEquals(List.of(earlierCreatedOrder, laterCreatedOrder), orders);
     }
+
+    @Test
+    void findAll_whenLimitAndOffsetAreProvided_shouldReturnRequestedPage() {
+        InMemoryOrderRepository repository = new InMemoryOrderRepository();
+
+        Instant firstCreatedAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant secondCreatedAt = Instant.parse("2026-05-17T12:05:00Z");
+        Instant thirdCreatedAt = Instant.parse("2026-05-17T12:10:00Z");
+
+        Order firstOrder = new Order(
+                "order-1",
+                OrderStatus.CREATED,
+                "customer-111",
+                "product-111",
+                1,
+                firstCreatedAt,
+                firstCreatedAt
+        );
+
+        Order secondOrder = new Order(
+                "order-2",
+                OrderStatus.CREATED,
+                "customer-222",
+                "product-222",
+                2,
+                secondCreatedAt,
+                secondCreatedAt
+        );
+
+        Order thirdOrder = new Order(
+                "order-3",
+                OrderStatus.CREATED,
+                "customer-333",
+                "product-333",
+                3,
+                thirdCreatedAt,
+                thirdCreatedAt
+        );
+
+        repository.save(firstOrder);
+        repository.save(secondOrder);
+        repository.save(thirdOrder);
+
+        List<Order> result = repository.findAll(2, 1);
+
+        assertEquals(List.of(secondOrder, thirdOrder), result);
+    }
+
+    @Test
+    void countByStatus_whenOrdersExist_shouldReturnMatchingCount() {
+        InMemoryOrderRepository repository = new InMemoryOrderRepository();
+
+        Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+
+        Order createdOrder = new Order(
+                "order-1",
+                OrderStatus.CREATED,
+                "customer-111",
+                "product-111",
+                1,
+                createdAt,
+                createdAt
+        );
+
+        Order cancelledOrder = new Order(
+                "order-2",
+                OrderStatus.CANCELLED,
+                "customer-222",
+                "product-222",
+                2,
+                createdAt,
+                createdAt
+        );
+
+        repository.save(createdOrder);
+        repository.save(cancelledOrder);
+
+        assertEquals(1, repository.countByStatus(OrderStatus.CREATED));
+        assertEquals(1, repository.countByStatus(OrderStatus.CANCELLED));
+    }
 }

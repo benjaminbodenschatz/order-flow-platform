@@ -128,6 +128,80 @@ public class JdbcOrderRepository implements OrderRepository {
         );
     }
 
+    @Override
+    public List<Order> findAll(int limit, int offset) {
+        return jdbcTemplate.query(
+                """
+                SELECT order_id,
+                      status,
+                      customer_id,
+                      product_id,
+                      quantity,
+                      created_at,
+                      updated_at
+                FROM orders
+                ORDER BY created_at, order_id
+                LIMIT ?
+                OFFSET ?
+                """,
+                this::mapRowToOrder,
+                limit,
+                offset
+        );
+    }
+
+    @Override
+    public List<Order> findAllByStatus(OrderStatus status, int limit, int offset) {
+        return jdbcTemplate.query(
+                """
+                SELECT order_id,
+                      status,
+                      customer_id,
+                      product_id,
+                      quantity,
+                      created_at,
+                      updated_at
+                FROM orders
+                WHERE status = ?
+                ORDER BY created_at, order_id
+                LIMIT ?
+                OFFSET ?
+                """,
+                this::mapRowToOrder,
+                status.name(),
+                limit,
+                offset
+        );
+    }
+
+    @Override
+    public long countAll() {
+       Long count = jdbcTemplate.queryForObject(
+               """
+               SELECT COUNT(*)
+               FROM orders
+               """,
+               Long.class
+       );
+
+       return count != null ? count : 0;
+    }
+
+    @Override
+    public long countByStatus(OrderStatus status) {
+        Long count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM orders
+                WHERE status = ?
+                """,
+                Long.class,
+                status.name()
+        );
+
+        return count != null ? count : 0;
+    }
+
     private Order mapRowToOrder(ResultSet resultSet, int rowNumber) throws SQLException {
         return new Order(
                 resultSet.getString("order_id"),

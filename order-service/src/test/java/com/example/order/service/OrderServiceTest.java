@@ -4,9 +4,11 @@ import com.example.order.domain.Order;
 import com.example.order.domain.OrderStatus;
 import com.example.order.error.InvalidOrderStateException;
 import com.example.order.error.InvalidOrderStatusException;
+import com.example.order.error.InvalidPaginationException;
 import com.example.order.error.OrderNotFoundException;
 import com.example.order.model.CreateOrderRequest;
 import com.example.order.model.OrderResponse;
+import com.example.order.model.PageResponse;
 import com.example.order.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -347,5 +349,110 @@ class OrderServiceTest {
         );
 
         verifyNoInteractions(orderRepository);
+    }
+
+    @Test
+    void getOrdersPage_whenOrdersExist_shouldReturnPagedOrders() {
+        Instant firstCreatedAt = Instant.parse("2026-05-17T12:00:00Z");
+        Instant secondCreatedAt = Instant.parse("2026-05-17T12:05:00Z");
+
+        Order firstOrder = new Order(
+                "order-1",
+                OrderStatus.CREATED,
+                "customer-111",
+                "product-111",
+                1,
+                firstCreatedAt,
+                firstCreatedAt
+        );
+
+        Order secondOrder = new Order(
+                "order-2",
+                OrderStatus.CREATED,
+                "customer-222",
+                "product-222",
+                2,
+                secondCreatedAt,
+                secondCreatedAt
+        );
+
+        when(orderRepository.findAll(2, 0)).thenReturn(List.of(firstOrder, secondOrder));
+        when(orderRepository.countAll()).thenReturn(5L);
+
+        PageResponse<OrderResponse> response = orderService.getOrdersPage(null, 0, 2);
+
+        assertEquals(0, response.page());
+        assertEquals(2, response.size());
+        assertEquals(5, response.totalElements());
+        assertEquals(3, response.totalPages());
+        assertEquals(2, response.content().size());
+        assertEquals("order-1", response.content().get(0).orderId());
+        assertEquals("order-2", response.content().get(1).orderId());
+    }
+
+    @Test
+    void getOrdersPage_whenPageIsOne_shouldUseCorrectOffset() {
+        when(orderRepository.findAll(2, 2)).thenReturn(List.of());
+        when(orderRepository.countAll()).thenReturn(5L);
+
+        PageResponse<OrderResponse> response = orderService.getOrdersPage(null, 1, 2);
+
+        assertEquals(1, response.page());
+        assertEquals(2, response.size());
+        assertEquals(5, response.totalElements());
+        assertEquals(3, response.totalPages());
+
+        verify(orderRepository).findAll(2, 2);
+    }
+
+    @Test
+    void getOrdersPage_whenStatusFilterIsProvided_shouldReturnPagedMatchingOrders() {
+        Instant createdAt = Instant.parse("2026-05-17T12:00:00Z");
+
+        Order order = new Order(
+                "order-1",
+                OrderStatus.CREATED,
+                "customer-111",
+                "product-111",
+                1,
+                createdAt,
+                createdAt
+        );
+
+        when(orderRepository.findAllByStatus(OrderStatus.CREATED, 10, 0)).thenReturn(List.of(order));
+        when(orderRepository.countByStatus(OrderStatus.CREATED)).thenReturn(1L);
+
+        PageResponse<OrderResponse> response = orderService.getOrdersPage("CREATED", 0, 10);
+
+        assertEquals(0, response.page());
+        assertEquals(10, response.size());
+        assertEquals(1, response.totalElements());
+        assertEquals(1, response.totalPages());
+        assertEquals(1, response.content().size());
+        assertEquals(OrderStatus.CREATED, response.content().get(0).status());
+    }
+
+    @Test
+    void getOrdersPage_whenPageIsNegative_shouldThrowInvalidPaginationException() {
+        assertThrows(
+                InvalidPaginationException.class,
+                () -> orderService.getOrdersPage(null, -1, 20)
+        );
+    }
+
+    @Test
+    void getOrdersPage_whenSizeIsZero_shouldThrowInvalidPaginationException() {
+        assertThrows(
+                InvalidPaginationException.class,
+                () -> orderService.getOrdersPage(null, 0, 0)
+        );
+    }
+
+    @Test
+    void getOrdersPage_whenSizeIsTooLarge_shouldThrowInvalidPaginationException() {
+        assertThrows(
+                InvalidPaginationException.class,
+                () -> orderService.getOrdersPage(null, 0, 101)
+        );
     }
 }
